@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNATCH — Video Downloader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --border: #242424;
+      --accent: #e8ff47;
+      --accent2: #ff4757;
+      --text: #f0f0f0;
+      --muted: #666;
+      --success: #39d98a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(232,255,71,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232,255,71,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      width: 600px; height: 600px;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(232,255,71,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 860px;
+      padding: 60px 24px 0;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid rgba(232,255,71,0.3);
+      padding: 4px 12px;
+      border-radius: 2px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(72px, 14vw, 140px);
+      letter-spacing: 0.04em;
+      line-height: 0.9;
+      color: var(--text);
+    }
+
+    h1 span { color: var(--accent); }
+
+    .tagline {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .platform-pills {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 5px 14px;
+      border-radius: 100px;
+      letter-spacing: 0.1em;
+    }
+
+    .pill.yt  { background: rgba(255,0,0,0.12);    color: #ff4444; border: 1px solid rgba(255,0,0,0.2); }
+    .pill.tt  { background: rgba(0,242,234,0.08);   color: #00f2ea; border: 1px solid rgba(0,242,234,0.2); }
+    .pill.mp4 { background: rgba(232,255,71,0.08);  color: var(--accent); border: 1px solid rgba(232,255,71,0.2); }
+
+    main {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 860px;
+      padding: 48px 24px 80px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .url-wrap {
+      flex: 1;
+      min-width: 260px;
+      position: relative;
+    }
+
+    .url-wrap::before {
+      content: '→';
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      pointer-events: none;
+    }
+
+    input[type="url"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px 14px 38px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="url"]::placeholder { color: var(--muted); }
+    input[type="url"]:focus { border-color: var(--accent); }
+
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    select:focus { border-color: var(--accent); }
+
+    .btn-go {
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 28px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-go:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(232,255,71,0.25);
+    }
+
+    .btn-go:active:not(:disabled) { transform: translateY(0); }
+    .btn-go:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Spinner */
+    .spinner {
+      display: none;
+      margin-top: 28px;
+      text-align: center;
+    }
+
+    .spinner.active { display: block; }
+
+    .spin-ring {
+      display: inline-block;
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spin-label {
+      margin-top: 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Result */
+    .result-box {
+      display: none;
+      margin-top: 24px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Single download result */
+    .result-single {
+      background: rgba(57,217,138,0.06);
+      border: 1px solid rgba(57,217,138,0.2);
+      border-radius: 10px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .check-icon { font-size: 28px; }
+
+    .result-text { flex: 1; min-width: 160px; }
+    .result-title { font-weight: 500; font-size: 14px; color: var(--success); }
+    .result-sub { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .btn-dl {
+      background: var(--success);
+      color: #0a0a0a;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 22px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: transform 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-dl:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(57,217,138,0.3);
+    }
+
+    /* Picker result (multiple options like audio vs video) */
+    .result-picker {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .picker-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .picker-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      text-decoration: none;
+      color: var(--text);
+      transition: border-color 0.2s, transform 0.15s;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .picker-item:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .picker-thumb {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      background: var(--surface2);
+    }
+
+    .picker-info {
+      padding: 10px 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+    }
+
+    .picker-name { color: var(--text); font-size: 12px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .picker-type { color: var(--muted); }
+
+    /* Error */
+    .error-box {
+      display: none;
+      margin-top: 24px;
+      background: rgba(255,71,87,0.06);
+      border: 1px solid rgba(255,71,87,0.2);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--accent2);
+      animation: slideIn 0.3s ease;
+    }
+
+    /* How it works */
+    .how {
+      margin-top: 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .how-step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .step-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 48px;
+      color: rgba(232,255,71,0.15);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .step-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+    .step-desc  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    .powered-by {
+      margin-top: 28px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: #333;
+    }
+
+    .powered-by a { color: #444; text-decoration: none; }
+    .powered-by a:hover { color: var(--accent); }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: #333;
+    }
+
+    @media (max-width: 600px) {
+      .result-single { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">↓ Media Downloader</div>
+  <h1>SN<span>A</span>TCH</h1>
+  <p class="tagline">// grab videos. no signup. no nonsense. //</p>
+  <div class="platform-pills">
+    <span class="pill yt">▶ YouTube</span>
+    <span class="pill tt">♪ TikTok</span>
+    <span class="pill mp4">no install needed</span>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+    <div class="input-row">
+      <div class="url-wrap">
+        <input type="url" id="urlInput" placeholder="Paste a YouTube or TikTok URL..." autocomplete="off" spellcheck="false" />
+      </div>
+      <select id="qualitySelect">
+        <option value="max">Best Quality</option>
+        <option value="1080">1080p</option>
+        <option value="720">720p</option>
+        <option value="480">480p</option>
+        <option value="360">360p</option>
+      </select>
+      <button class="btn-go" id="goBtn" onclick="handleSnatch()">SNATCH</button>
+    </div>
+
+    <!-- Spinner -->
+    <div class="spinner" id="spinner">
+      <div class="spin-ring"></div>
+      <div class="spin-label" id="spinLabel">Fetching video info...</div>
+    </div>
+
+    <!-- Result area -->
+    <div class="result-box" id="resultBox">
+      <!-- filled dynamically -->
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <div class="how">
+    <div class="how-step">
+      <div class="step-num">01</div>
+      <div class="step-title">Paste the URL</div>
+      <div class="step-desc">Drop any YouTube or TikTok link into the box above.</div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">02</div>
+      <div class="step-title">Pick quality</div>
+      <div class="step-desc">Choose your preferred resolution or leave on Best.</div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">03</div>
+      <div class="step-title">Hit SNATCH</div>
+      <div class="step-desc">We call the Cobalt API to grab a direct download link.</div>
+    </div>
+    <div class="how-step">
+      <div class="step-num">04</div>
+      <div class="step-title">Save your file</div>
+      <div class="step-desc">Click the download button and save the video to your device.</div>
+    </div>
+  </div>
+
+  <div class="powered-by">
+    powered by <a href="https://cobalt.tools" target="_blank">cobalt.tools</a> · no server required · works on github pages
+  </div>
+</main>
+
+<footer>SNATCH · static · open source friendly</footer>
+
+<script>
+  // Cobalt public API instance
+  const COBALT_API = 'https://api.cobalt.tools';
+
+  const urlInput    = document.getElementById('urlInput');
+  const qualitySelect = document.getElementById('qualitySelect');
+  const goBtn       = document.getElementById('goBtn');
+  const spinner     = document.getElementById('spinner');
+  const spinLabel   = document.getElementById('spinLabel');
+  const resultBox   = document.getElementById('resultBox');
+  const errorBox    = document.getElementById('errorBox');
+
+  urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSnatch(); });
+
+  function hideAll() {
+    spinner.classList.remove('active');
+    resultBox.style.display = 'none';
+    errorBox.style.display  = 'none';
+    resultBox.innerHTML     = '';
+  }
+
+  function showError(msg) {
+    hideAll();
+    errorBox.textContent = '⚠ ' + msg;
+    errorBox.style.display = 'block';
+  }
+
+  function showSpinner(msg) {
+    spinLabel.textContent = msg;
+    spinner.classList.add('active');
+  }
+
+  function setBtn(loading) {
+    goBtn.disabled = loading;
+    goBtn.textContent = loading ? 'LOADING...' : 'SNATCH';
+  }
+
+  async function handleSnatch() {
+    const url = urlInput.value.trim();
+    if (!url) { showError('Please paste a URL first.'); return; }
+
+    const isYT = /youtube\.com|youtu\.be/.test(url);
+    const isTT = /tiktok\.com/.test(url);
+    if (!isYT && !isTT) {
+      showError('Only YouTube and TikTok URLs are supported.');
+      return;
+    }
+
+    hideAll();
+    setBtn(true);
+    showSpinner('Fetching video...');
+
+    const quality = qualitySelect.value;
+
+    try {
+      const payload = {
+        url,
+        videoQuality: quality,
+        filenameStyle: 'pretty',
+        downloadMode: 'auto',
+      };
+
+      const res = await fetch(COBALT_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.code || `API error ${res.status}`);
+      }
+
+      const data = await res.json();
+      spinner.classList.remove('active');
+      handleCobaltResponse(data);
+
+    } catch (e) {
+      showError(e.message || 'Something went wrong. Try again or check the URL.');
+    } finally {
+      setBtn(false);
+    }
+  }
+
+  function handleCobaltResponse(data) {
+    // status: redirect | tunnel | picker | error
+    if (data.status === 'error') {
+      showError(data.error?.code || 'Cobalt returned an error.');
+      return;
+    }
+
+    resultBox.style.display = 'block';
+
+    if (data.status === 'redirect' || data.status === 'tunnel') {
+      // Single file download
+      resultBox.innerHTML = `
+        <div class="result-single">
+          <div class="check-icon">✓</div>
+          <div class="result-text">
+            <div class="result-title">Your video is ready!</div>
+            <div class="result-sub">Click below — your browser will download the file directly.</div>
+          </div>
+          <a class="btn-dl" href="${escHtml(data.url)}" target="_blank" rel="noopener noreferrer">↓ SAVE FILE</a>
+        </div>`;
+
+    } else if (data.status === 'picker') {
+      // Multiple options (e.g. TikTok photo slideshow or separate streams)
+      const items = data.picker || [];
+      const audioHtml = data.audio
+        ? `<a class="picker-item" href="${escHtml(data.audio)}" target="_blank" rel="noopener noreferrer">
+             <div class="picker-info"><div class="picker-name">🎵 Audio only</div><div class="picker-type">audio</div></div>
+           </a>`
+        : '';
+
+      const itemsHtml = items.map((item, i) => `
+        <a class="picker-item" href="${escHtml(item.url)}" target="_blank" rel="noopener noreferrer">
+          ${item.thumb ? `<img class="picker-thumb" src="${escHtml(item.thumb)}" alt="thumb" loading="lazy" />` : ''}
+          <div class="picker-info">
+            <div class="picker-name">${item.type === 'video' ? '🎬' : '🖼'} Option ${i + 1}</div>
+            <div class="picker-type">${item.type || 'file'}</div>
+          </div>
+        </a>`).join('');
+
+      resultBox.innerHTML = `
+        <div class="result-picker">
+          <div class="picker-label">// Multiple files found — click to download each one</div>
+          <div class="picker-grid">${itemsHtml}${audioHtml}</div>
+        </div>`;
+
+    } else {
+      showError('Unexpected response from Cobalt. Try a different URL.');
+    }
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/"/g,'&quot;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
