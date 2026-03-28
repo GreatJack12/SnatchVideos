@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNATCH — Video Downloader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111;
+      --surface2: #181818;
+      --border: #242424;
+      --accent: #e8ff47;
+      --red: #ff4757;
+      --text: #f0f0f0;
+      --muted: #666;
+      --green: #39d98a;
+      --blue: #5b9cf6;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(232,255,71,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232,255,71,.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      width: 700px; height: 700px;
+      top: -300px; left: 50%; transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(232,255,71,.05) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    header {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 900px;
+      padding: 56px 24px 0;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid rgba(232,255,71,.25);
+      padding: 4px 14px; border-radius: 2px; margin-bottom: 20px;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(64px, 13vw, 130px);
+      letter-spacing: .04em; line-height: .9;
+    }
+    h1 span { color: var(--accent); }
+
+    .tagline {
+      margin-top: 14px; color: var(--muted);
+      font-size: 13px; letter-spacing: .06em;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .pills {
+      display: flex; gap: 8px; justify-content: center;
+      margin-top: 18px; flex-wrap: wrap;
+    }
+    .pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px; padding: 4px 12px;
+      border-radius: 100px; letter-spacing: .1em;
+    }
+    .pill.yt  { background: rgba(255,0,0,.1);    color: #ff5555; border: 1px solid rgba(255,0,0,.18); }
+    .pill.tt  { background: rgba(0,242,234,.07); color: #00d4cc; border: 1px solid rgba(0,242,234,.18); }
+
+    main {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 900px;
+      padding: 40px 24px 80px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* ── Config card ── */
+    .config-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .config-toggle {
+      width: 100%; background: none; border: none;
+      padding: 16px 22px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; color: var(--text);
+      font-family: 'DM Mono', monospace; font-size: 12px;
+      letter-spacing: .05em;
+    }
+    .config-toggle:hover { background: rgba(255,255,255,.02); }
+
+    .config-toggle-left {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .config-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--red); flex-shrink: 0;
+      transition: background .3s;
+    }
+    .config-dot.ok { background: var(--green); }
+
+    .chevron {
+      color: var(--muted); transition: transform .25s;
+      font-size: 14px;
+    }
+    .chevron.open { transform: rotate(180deg); }
+
+    .config-body {
+      display: none;
+      padding: 0 22px 22px;
+      border-top: 1px solid var(--border);
+    }
+    .config-body.open { display: block; }
+
+    .setup-notice {
+      background: rgba(91,156,246,.07);
+      border: 1px solid rgba(91,156,246,.2);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 18px 0 16px;
+      font-size: 12px; line-height: 1.7;
+      color: #aac4f5;
+      font-family: 'DM Mono', monospace;
+    }
+    .setup-notice a { color: var(--blue); }
+    .setup-notice ol { padding-left: 18px; margin-top: 6px; }
+    .setup-notice li { margin-bottom: 3px; }
+    .setup-notice code {
+      background: rgba(255,255,255,.07);
+      padding: 1px 5px; border-radius: 3px;
+      font-size: 11px;
+    }
+
+    .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .field { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 5px; }
+
+    label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--muted);
+    }
+
+    input[type="text"], input[type="url"], input[type="password"] {
+      background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 7px;
+      padding: 11px 14px;
+      color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
+      outline: none; width: 100%;
+      transition: border-color .2s;
+    }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: #444; }
+
+    .btn-save {
+      margin-top: 14px;
+      background: none;
+      border: 1px solid var(--accent); border-radius: 7px;
+      padding: 10px 20px;
+      color: var(--accent); font-family: 'DM Mono', monospace;
+      font-size: 12px; letter-spacing: .05em;
+      cursor: pointer; transition: background .2s, color .2s;
+    }
+    .btn-save:hover { background: var(--accent); color: #0a0a0a; }
+
+    /* ── Main downloader card ── */
+    .download-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 28px;
+    }
+
+    .input-row {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+
+    .url-wrap { flex: 1; min-width: 240px; position: relative; }
+    .url-wrap::before {
+      content: '→';
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-family: 'DM Mono', monospace;
+      pointer-events: none; font-size: 13px;
+    }
+
+    input[type="url"].url-field {
+      padding-left: 34px; font-size: 13px;
+      padding-top: 13px; padding-bottom: 13px;
+    }
+
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 7px;
+      padding: 13px 14px; color: var(--text);
+      font-family: 'DM Mono', monospace; font-size: 12px;
+      outline: none; cursor: pointer; transition: border-color .2s;
+    }
+    select:focus { border-color: var(--accent); }
+
+    .btn-go {
+      background: var(--accent); color: #0a0a0a;
+      border: none; border-radius: 8px;
+      padding: 13px 26px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px; letter-spacing: .1em;
+      cursor: pointer; white-space: nowrap;
+      transition: transform .15s, box-shadow .15s, opacity .15s;
+    }
+    .btn-go:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(232,255,71,.2);
+    }
+    .btn-go:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* spinner */
+    #spinner {
+      display: none; margin-top: 24px; text-align: center;
+    }
+    .spin-ring {
+      display: inline-block; width: 32px; height: 32px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin-label {
+      margin-top: 9px; font-family: 'DM Mono', monospace;
+      font-size: 11px; color: var(--muted);
+    }
+
+    /* result / error messages */
+    .msg {
+      display: none; margin-top: 20px;
+      border-radius: 9px; padding: 16px 20px;
+      animation: fadeUp .25s ease;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.success { background: rgba(57,217,138,.06); border: 1px solid rgba(57,217,138,.2); }
+    .msg.error   { background: rgba(255,71,87,.06); border: 1px solid rgba(255,71,87,.2);
+                   font-family: 'DM Mono', monospace; font-size: 12px; color: var(--red); }
+    .msg.picker  { background: var(--surface2); border: 1px solid var(--border); }
+
+    .success-row {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .success-icon { font-size: 24px; }
+    .success-body { flex: 1; }
+    .success-title { font-weight: 500; font-size: 14px; color: var(--green); }
+    .success-sub {
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      color: var(--muted); margin-top: 3px;
+    }
+
+    .btn-dl {
+      display: inline-block;
+      background: var(--green); color: #0a0a0a;
+      border: none; border-radius: 7px;
+      padding: 11px 20px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 17px; letter-spacing: .1em;
+      cursor: pointer; text-decoration: none; white-space: nowrap;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn-dl:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(57,217,138,.28);
+    }
+
+    .picker-label {
+      font-family: 'DM Mono', monospace; font-size: 10px;
+      color: var(--muted); letter-spacing: .1em;
+      text-transform: uppercase; margin-bottom: 12px;
+    }
+    .picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .picker-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 7px; padding: 10px 12px;
+      color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px;
+      cursor: pointer; text-align: left;
+      transition: border-color .2s, transform .15s;
+    }
+    .picker-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .picker-btn .p-label { margin-bottom: 2px; }
+    .picker-btn .p-type { font-size: 10px; color: var(--muted); }
+
+    footer {
+      position: relative; z-index: 1;
+      text-align: center; padding: 20px;
+      font-family: 'DM Mono', monospace; font-size: 11px; color: #2a2a2a;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">↓ Video Downloader</div>
+  <h1>SN<span>A</span>TCH</h1>
+  <p class="tagline">// youtube & tiktok · no server required //</p>
+  <div class="pills">
+    <span class="pill yt">▶ YouTube</span>
+    <span class="pill tt">♪ TikTok</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Config card ── -->
+  <div class="config-card">
+    <button class="config-toggle" onclick="toggleConfig()">
+      <div class="config-toggle-left">
+        <div class="config-dot" id="configDot"></div>
+        <span id="configStatus">Instance not configured — click to set up</span>
+      </div>
+      <span class="chevron" id="chevron">▾</span>
+    </button>
+    <div class="config-body" id="configBody">
+      <div class="setup-notice">
+        <strong>One-time setup:</strong> The public Cobalt API now requires authentication.
+        You need a free Cobalt instance to use this. Here's the easiest way:
+        <ol>
+          <li>Go to <a href="https://railway.app" target="_blank">railway.app</a> and sign in with GitHub (free)</li>
+          <li>Click <strong>New Project → Deploy Template</strong>, search for <strong>cobalt</strong></li>
+          <li>Deploy it — Railway gives you a public URL like <code>cobalt-xxx.up.railway.app</code></li>
+          <li>In your Railway project → Variables, add: <code>API_KEY_URL=file://keys.json</code> and create a <code>keys.json</code> with a UUID key (or leave auth off)</li>
+          <li>Paste your instance URL (and optional API key) below and click Save</li>
+        </ol>
+        <br>
+        <strong>Alternatively:</strong> Run cobalt locally with Docker:<br>
+        <code>docker run -p 9000:9000 -e API_URL=http://localhost:9000 ghcr.io/imputnet/cobalt</code><br>
+        then use <code>http://localhost:9000</code> as your instance URL.
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Cobalt Instance URL</label>
+          <input type="url" id="instanceUrl" placeholder="https://your-cobalt-instance.up.railway.app" />
+        </div>
+        <div class="field">
+          <label>API Key (if required)</label>
+          <input type="password" id="apiKey" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+        </div>
+      </div>
+      <button class="btn-save" onclick="saveConfig()">✓ Save & Close</button>
+    </div>
+  </div>
+
+  <!-- ── Downloader card ── -->
+  <div class="download-card">
+    <div class="input-row">
+      <div class="url-wrap">
+        <input type="url" class="url-field" id="urlInput"
+               placeholder="Paste a YouTube or TikTok URL..."
+               autocomplete="off" spellcheck="false" />
+      </div>
+      <select id="qualitySelect">
+        <option value="max">Best Quality</option>
+        <option value="1080">1080p</option>
+        <option value="720">720p</option>
+        <option value="480">480p</option>
+        <option value="360">360p</option>
+      </select>
+      <button class="btn-go" id="goBtn" onclick="handleSnatch()">SNATCH</button>
+    </div>
+
+    <div id="spinner">
+      <div class="spin-ring"></div>
+      <div class="spin-label">Fetching video...</div>
+    </div>
+
+    <div class="msg success" id="msgSuccess">
+      <div class="success-row">
+        <div class="success-icon">✓</div>
+        <div class="success-body">
+          <div class="success-title">Your video is ready!</div>
+          <div class="success-sub">Click download — the file will save to your device.</div>
+        </div>
+        <button class="btn-dl" id="btnDl">↓ DOWNLOAD</button>
+      </div>
+    </div>
+
+    <div class="msg picker" id="msgPicker">
+      <div class="picker-label">// Multiple files found — click one to download</div>
+      <div class="picker-grid" id="pickerGrid"></div>
+    </div>
+
+    <div class="msg error" id="msgError"></div>
+  </div>
+
+</main>
+
+<footer>SNATCH · powered by cobalt · no tracking</footer>
+
+<script>
+  // ── State ──────────────────────────────────────────────
+  let instanceUrl = localStorage.getItem('cobalt_url') || '';
+  let apiKey      = localStorage.getItem('cobalt_key') || '';
+
+  const elConfigBody   = document.getElementById('configBody');
+  const elChevron      = document.getElementById('chevron');
+  const elConfigDot    = document.getElementById('configDot');
+  const elConfigStatus = document.getElementById('configStatus');
+  const elInstanceUrl  = document.getElementById('instanceUrl');
+  const elApiKey       = document.getElementById('apiKey');
+  const elUrlInput     = document.getElementById('urlInput');
+  const elQuality      = document.getElementById('qualitySelect');
+  const elGoBtn        = document.getElementById('goBtn');
+  const elSpinner      = document.getElementById('spinner');
+  const elMsgSuccess   = document.getElementById('msgSuccess');
+  const elMsgPicker    = document.getElementById('msgPicker');
+  const elMsgError     = document.getElementById('msgError');
+  const elBtnDl        = document.getElementById('btnDl');
+  const elPickerGrid   = document.getElementById('pickerGrid');
+
+  // ── Init ───────────────────────────────────────────────
+  function init() {
+    elInstanceUrl.value = instanceUrl;
+    elApiKey.value      = apiKey;
+    updateConfigStatus();
+    // If not configured yet, auto-open the config panel
+    if (!instanceUrl) {
+      elConfigBody.classList.add('open');
+      elChevron.classList.add('open');
+    }
+  }
+
+  function updateConfigStatus() {
+    if (instanceUrl) {
+      const short = instanceUrl.replace(/https?:\/\//, '').replace(/\/$/, '');
+      elConfigStatus.textContent = '⚙ Instance: ' + short;
+      elConfigDot.classList.add('ok');
+    } else {
+      elConfigStatus.textContent = 'Instance not configured — click to set up';
+      elConfigDot.classList.remove('ok');
+    }
+  }
+
+  function toggleConfig() {
+    const open = elConfigBody.classList.toggle('open');
+    elChevron.classList.toggle('open', open);
+  }
+
+  function saveConfig() {
+    instanceUrl = elInstanceUrl.value.trim().replace(/\/$/, '');
+    apiKey      = elApiKey.value.trim();
+    localStorage.setItem('cobalt_url', instanceUrl);
+    localStorage.setItem('cobalt_key', apiKey);
+    updateConfigStatus();
+    elConfigBody.classList.remove('open');
+    elChevron.classList.remove('open');
+  }
+
+  // ── Downloader ─────────────────────────────────────────
+  elUrlInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleSnatch(); });
+
+  function resetMsgs() {
+    [elMsgSuccess, elMsgPicker, elMsgError].forEach(el => el.style.display = 'none');
+    elSpinner.style.display = 'none';
+    elPickerGrid.innerHTML = '';
+  }
+
+  function showError(msg) {
+    resetMsgs();
+    elMsgError.textContent = '⚠ ' + msg;
+    elMsgError.style.display = 'block';
+  }
+
+  function triggerDownload(url) {
+    window.location.href = url;
+  }
+
+  async function handleSnatch() {
+    const url = elUrlInput.value.trim();
+    if (!url) { showError('Please paste a URL first.'); return; }
+
+    if (!instanceUrl) {
+      showError('Configure your Cobalt instance URL first (click the setup panel above).');
+      elConfigBody.classList.add('open');
+      elChevron.classList.add('open');
+      return;
+    }
+
+    const isYT = /youtube\.com|youtu\.be/.test(url);
+    const isTT = /tiktok\.com/.test(url);
+    if (!isYT && !isTT) {
+      showError('Only YouTube and TikTok URLs are supported.');
+      return;
+    }
+
+    resetMsgs();
+    elGoBtn.disabled = true;
+    elGoBtn.textContent = 'LOADING...';
+    elSpinner.style.display = 'block';
+
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      if (apiKey) headers['Authorization'] = 'Api-Key ' + apiKey;
+
+      const res = await fetch(instanceUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          url,
+          videoQuality: elQuality.value,
+          filenameStyle: 'pretty',
+          downloadMode: 'auto',
+        }),
+      });
+
+      elSpinner.style.display = 'none';
+
+      let data;
+      try { data = await res.json(); }
+      catch(e) { throw new Error('Could not parse response from your instance.'); }
+
+      if (!res.ok || data.status === 'error') {
+        const code = data?.error?.code || data?.text || `HTTP ${res.status}`;
+        throw new Error(code);
+      }
+
+      if (data.status === 'redirect' || data.status === 'tunnel') {
+        const dlUrl = data.url;
+        elMsgSuccess.style.display = 'block';
+        elBtnDl.onclick = () => triggerDownload(dlUrl);
+
+      } else if (data.status === 'picker') {
+        const items = [...(data.picker || [])];
+        if (data.audio) items.push({ url: data.audio, type: 'audio', label: 'Audio track' });
+
+        items.forEach((item, i) => {
+          const btn = document.createElement('button');
+          btn.className = 'picker-btn';
+          const emoji = item.type === 'audio' ? '🎵' : item.type === 'photo' ? '🖼' : '🎬';
+          btn.innerHTML = `<div class="p-label">${emoji} ${item.label || 'Option ' + (i + 1)}</div>
+                           <div class="p-type">${item.type || 'file'}</div>`;
+          btn.onclick = () => triggerDownload(item.url);
+          elPickerGrid.appendChild(btn);
+        });
+        elMsgPicker.style.display = 'block';
+
+      } else {
+        throw new Error('Unexpected response: ' + data.status);
+      }
+
+    } catch (e) {
+      showError(e.message || 'Something went wrong. Check your instance URL and try again.');
+    } finally {
+      elGoBtn.disabled = false;
+      elGoBtn.textContent = 'SNATCH';
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
